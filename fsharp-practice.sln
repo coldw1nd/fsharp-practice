@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "fsharp-practice", "fsharp-practice\fsharp-practice.fsproj", "{802CFD41-B04E-4352-8DAA-054034CD5EBF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{802CFD41-B04E-4352-8DAA-054034CD5EBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{802CFD41-B04E-4352-8DAA-054034CD5EBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{802CFD41-B04E-4352-8DAA-054034CD5EBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{802CFD41-B04E-4352-8DAA-054034CD5EBF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
