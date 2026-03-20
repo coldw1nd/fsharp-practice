@@ -44,7 +44,7 @@ module Entities =
     open CombatLogic
     
     type ICombatant =
-        abstract member ReceiveAction: ActionType -> unit
+        abstract member ReceiveAction: ActionType -> int -> unit
     
     [<AbstractClass>]
     type Actor(id: EntityId, name: string, stats: CombatStats) =
@@ -77,12 +77,12 @@ module Entities =
         override this.GetHashCode() = hash this.Id
         
         interface ICombatant with
-            member this.ReceiveAction(action) =
+            member this.ReceiveAction action round =
                 match action with
                 | Attack (damageValue, element) ->
                     let calcFunc = createDamageCalculator 0 stats.Armor
                     let finalDmg = calcFunc damageValue
-                    this.TakeDamage(finalDmg, 1)
+                    this.TakeDamage(finalDmg, round)
                     printfn "%s получил %d урона от стихии %A" this.Name finalDmg element
                 | Heal amount ->
                     currentHp <- System.Math.Min(stats.MaxHp, currentHp + amount)
@@ -90,14 +90,69 @@ module Entities =
                 | Flee -> printfn "[%s] пытается сбежать, но это невозможно!" this.Name
     
     type Hero(id: EntityId, name: string) =
-            inherit Actor(id, name, {MaxHp = 100; Armor = 5; MagicResist = 10})
-            override this.PerformTurn(_) =
-                printfn "Герой %s атакует мечом!" this.Name
-                Attack(DamageValue(35), Element.Physical)
+        inherit Actor(id, name, {MaxHp = 100; Armor = 5; MagicResist = 10})
+        override this.PerformTurn(_) =
+            printfn "Герой %s атакует мечом!" this.Name
+            Attack(DamageValue(35), Element.Physical)
             
     type Boss(id: EntityId, name: string) =
-            inherit Actor(id, name, {MaxHp = 300; Armor = 15; MagicResist = 50})
-            override this.PerformTurn(target) =
-                printfn "БОСС %s кастует заклинание!" this.Name
-                Attack(DamageValue(50), Element.Fire)
+        inherit Actor(id, name, {MaxHp = 300; Armor = 15; MagicResist = 50})
+        override this.PerformTurn(target) =
+            printfn "БОСС %s кастует заклинание!" this.Name
+            Attack(DamageValue(50), Element.Fire)
+
+
+open Entities
+
+module Program =
+    open TypeDefinitions
+    open Entities
+    
+    [<EntryPoint>]
+    let main argv =
+        let paladin = new Hero(EntityId 1, "Артур")
+        let dragon = new Boss(EntityId 2, "Дракон")
+        
+        paladin.OnDeath.Add(fun details -> printfn "Герой пал на %d ходу. Причина: %s" details.TurnNumber details.Reason)
+        dragon.OnDeath.Add(fun details -> printfn "Дракон повержен! ID: %A" details.VictimId)
+        
+        let fakePaladin = new Hero(EntityId 1, "Клон")
+        printfn "Паладин и Клон одна сущность? %b" (paladin = fakePaladin)
+        
+        let combatantList: list<ICombatant> = [paladin :> ICombatant; dragon :> ICombatant]
+        let roundCounter = Seq.initInfinite(fun i -> i+1)
+        
+        use enumerator = roundCounter.GetEnumerator()
+        while paladin.CurrentHp > 0 && dragon.CurrentHp > 0 do
+            enumerator.MoveNext() |> ignore
             
+            let currentRound = enumerator.Current
+            printfn "Раунд %d" currentRound
+            
+            let heroAction = paladin.PerformTurn(dragon)
+            let dragonTarget = dragon :> ICombatant
+            dragonTarget.ReceiveAction heroAction currentRound
+            
+            if dragon.CurrentHp > 0 then
+                let dragonAction = dragon.PerformTurn(paladin)
+                let heroTarget = paladin :> ICombatant
+                heroTarget.ReceiveAction dragonAction currentRound
+            
+        for i = 1 to 3 do
+            let mana = CombatLogic.calcMana 10 i
+            printfn "Мана паладина на %d уровне: %d" i mana
+            
+        let survivors =
+            combatantList |> List.filter(fun combatant ->
+                let actor = combatant :?> Actor
+                actor.CurrentHp > 0)
+        
+        
+        for survivor in survivors do
+            let actor = survivor :?> Actor
+            printfn "Выжил %s с HP: %d" actor.Name actor.CurrentHp
+            
+        let secretCode = CombatLogic.generateSoulKey paladin.Id 4096
+        printfn "Секретный код души победителя: %d" secretCode
+        
+        0
