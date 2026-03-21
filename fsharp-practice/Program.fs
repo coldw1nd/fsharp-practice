@@ -22,6 +22,13 @@ module TypeDefinitions =
         member this.Y = y
         member this.Z = z
     
+    type Inventory(size: int) =
+        let items = Array.create size "Пусто"
+        
+        member this.Item
+            with get(index) = items.[index]
+            and set index value = items.[index] <- value
+    
 module CombatLogic =
     open TypeDefinitions
     
@@ -50,12 +57,24 @@ module Entities =
     type Actor(id: EntityId, name: string, stats: CombatStats) =
         let mutable currentHp = stats.MaxHp
         let mutable isDefending = false
+        let mutable level = 1
         let deathEvent = new Event<DeathDetails>()
+        static let mutable globalActorCount = 0
         
+        do
+            globalActorCount <- globalActorCount + 1
+            
         member this.Id = id
         member this.Name = name
         member this.Stats = stats
         member this.CurrentHp = currentHp
+        member this.Level
+            with get() = level
+            and set(value) =
+                if value < 1 then
+                    raise (ArgumentOutOfRangeException("Уровень не может быть меньше 1!"))
+                else
+                    level <- value
         
         [<CLIEvent>]
         member this.OnDeath = deathEvent.Publish
@@ -66,7 +85,7 @@ module Entities =
                 if currentHp <= 0 then
                     currentHp <- 0
                     deathEvent.Trigger({VictimId = id; TurnNumber = turn; Reason = "Фатальный урон"})
-        
+        member this.GetTotalActors() = globalActorCount
         abstract member PerformTurn: ICombatant -> ActionType
         
         member this.Defend() = isDefending <- true
@@ -91,6 +110,8 @@ module Entities =
     
     type Hero(id: EntityId, name: string) =
         inherit Actor(id, name, {MaxHp = 100; Armor = 5; MagicResist = 10})
+        new(name: string) = new Hero(EntityId 99, name)
+        
         override this.PerformTurn(_) =
             printfn "Герой %s атакует мечом!" this.Name
             Attack(DamageValue(35), Element.Physical)
